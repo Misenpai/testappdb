@@ -1,0 +1,35 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Attendance {
+  id        Int      @id @default(autoincrement())
+  userId    String   @db.VarChar(255)
+  audioUrl  String?  @db.VarChar(500)
+  location  String?  @db.VarChar(255)
+  createdAt DateTime @default(now())
+  photos    AttendancePhoto[]
+
+  @@map("attendance")
+}
+
+model AttendancePhoto {
+  id           Int        @id @default(autoincrement())
+  attendanceId Int
+  photoUrl     String     @db.VarChar(500)
+  attendance   Attendance @relation(fields: [attendanceId], references: [id], onDelete: Cascade)
+
+  @@map("attendance_photos")
+}
