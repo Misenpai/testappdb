@@ -1,13 +1,9 @@
+
 import multer from 'multer';
 import path from 'path';
-import fs from 'fs';
+import { ensureDir } from './folderUtils.js';
 
 const UPLOAD_DIR = process.env.UPLOAD_DIR || 'uploads';
-
-// ensure dirs exist
-const ensureDir = (dir: string) => {
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-};
 
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => {

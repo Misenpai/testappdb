@@ -14,13 +14,26 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model User {
+  id          String       @id @default(cuid())
+  name        String       @db.VarChar(255)
+  email       String       @unique @db.VarChar(255)
+  password    String       @db.VarChar(255)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  attendances Attendance[]
+
+  @@map("users")
+}
+
 model Attendance {
-  id        Int      @id @default(autoincrement())
-  userId    String   @db.VarChar(255)
-  audioUrl  String?  @db.VarChar(500)
-  location  String?  @db.VarChar(255)
-  createdAt DateTime @default(now())
+  id        Int               @id @default(autoincrement())
+  userId    String            @db.VarChar(255)
+  location  String?           @db.VarChar(255)
+  createdAt DateTime          @default(now())
+  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   photos    AttendancePhoto[]
+  audio     AttendanceAudio?
 
   @@map("attendance")
 }
@@ -29,7 +42,18 @@ model AttendancePhoto {
   id           Int        @id @default(autoincrement())
   attendanceId Int
   photoUrl     String     @db.VarChar(500)
+  createdAt    DateTime   @default(now())
   attendance   Attendance @relation(fields: [attendanceId], references: [id], onDelete: Cascade)
 
   @@map("attendance_photos")
+}
+
+model AttendanceAudio {
+  id           Int        @id @default(autoincrement())
+  attendanceId Int        @unique
+  audioUrl     String     @db.VarChar(500)
+  createdAt    DateTime   @default(now())
+  attendance   Attendance @relation(fields: [attendanceId], references: [id], onDelete: Cascade)
+
+  @@map("attendance_audio")
 }
