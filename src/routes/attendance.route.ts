@@ -1,6 +1,6 @@
 
 import { Router } from 'express';
-import { createAttendance, getAttendance } from '../controllers/attendance.controller.js';
+import { createAttendance } from '../controllers/attendance.controller.js';
 import { upload } from '../utils/fileUpload.js';
 
 const router = Router();
@@ -11,6 +11,5 @@ router.post(
   createAttendance
 );
 
-router.get('/attendance/:userId', getAttendance);
 
 export default router;
