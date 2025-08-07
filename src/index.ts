@@ -1,17 +1,19 @@
-// src/index.ts
+
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { connectDB } from './config/db.js';
 import attendanceRoutes from './routes/attendance.route.js';
 import userRoutes from './routes/user.route.js';
+import userLocationRoutes from './routes/userLocation.route.js';
+import profileRoutes from './routes/profile.route.js';
 
 dotenv.config();
 connectDB();
 
 const app = express();
 
-// Enable CORS for all origins (for development)
+
 app.use(cors({
   origin: true,
   credentials: true
@@ -20,7 +22,7 @@ app.use(cors({
 app.use(express.json());
 app.use(express.static(process.env.UPLOAD_DIR || 'uploads'));
 
-// Add a test route for connection testing
+
 app.get('/api/test', (req, res) => {
   res.json({ 
     success: true, 
@@ -29,13 +31,15 @@ app.get('/api/test', (req, res) => {
   });
 });
 
-// Health check route
+
 app.get('/health', (req, res) => {
   res.json({ status: 'OK', uptime: process.uptime() });
 });
 
 app.use('/api', attendanceRoutes);
 app.use('/api', userRoutes);
+app.use('/api', userLocationRoutes);
+app.use('/api', profileRoutes);
 
 const PORT = parseInt(process.env.PORT || '3000', 10);
 

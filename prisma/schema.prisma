@@ -14,26 +14,46 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum LocationType {
+  ABSOLUTE
+  APPROX
+  FIELDTRIP
+}
+
 model User {
-  id          String       @id @default(cuid())
-  name        String       @db.VarChar(255)
-  email       String       @unique @db.VarChar(255)
-  password    String       @db.VarChar(255)
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  id          String            @id @default(cuid())
+  empId       String            @unique @db.VarChar(255)
+  username    String            @unique @db.VarChar(255)
+  email       String            @unique @db.VarChar(255)
+  password    String            @db.VarChar(255)
+  location    String            @default("all") @db.VarChar(255)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  userLocation UserLocation?
   attendances Attendance[]
 
   @@map("users")
 }
 
+model UserLocation {
+  id       Int          @id @default(autoincrement())
+  empId    String       @db.VarChar(255) @unique
+  username String       @db.VarChar(255)
+  location LocationType @default(ABSOLUTE)
+  user     User         @relation(fields: [empId], references: [empId], onDelete: Cascade)
+
+  @@map("user_locations")
+}
+
 model Attendance {
-  id        Int               @id @default(autoincrement())
-  userId    String            @db.VarChar(255)
-  location  String?           @db.VarChar(255)
-  createdAt DateTime          @default(now())
-  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  photos    AttendancePhoto[]
-  audio     AttendanceAudio?
+  id            Int               @id @default(autoincrement())
+  empId         String            @db.VarChar(255)
+  username      String            @db.VarChar(255)
+  takenLocation String?           @db.VarChar(255)
+  createdAt     DateTime          @default(now())
+  user          User              @relation(fields: [empId], references: [empId], onDelete: Cascade)
+  photos        AttendancePhoto[]
+  audio         AttendanceAudio[]
 
   @@map("attendance")
 }
@@ -50,7 +70,7 @@ model AttendancePhoto {
 
 model AttendanceAudio {
   id           Int        @id @default(autoincrement())
-  attendanceId Int        @unique
+  attendanceId Int
   audioUrl     String     @db.VarChar(500)
   createdAt    DateTime   @default(now())
   attendance   Attendance @relation(fields: [attendanceId], references: [id], onDelete: Cascade)

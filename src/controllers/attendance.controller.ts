@@ -1,4 +1,3 @@
-
 import type { Request, Response } from 'express';
 import { PrismaClient } from '../../generated/prisma/index.js';
 import path from 'path';
@@ -15,7 +14,7 @@ export const createAttendance = async (req: Request, res: Response) => {
     }
 
     const user = await prisma.user.findFirst({
-      where: { name: username }
+      where: { username: username }
     });
 
     if (!user) {
@@ -37,8 +36,9 @@ export const createAttendance = async (req: Request, res: Response) => {
 
     const attendance = await prisma.attendance.create({
       data: {
-        userId: user.id,
-        location: location || null,
+        empId: user.empId,
+        username: user.username,
+        takenLocation: location || null,
         photos: {
           create: photoUrls.map(url => ({
             photoUrl: url
@@ -46,9 +46,9 @@ export const createAttendance = async (req: Request, res: Response) => {
         },
         ...(audioUrl && {
           audio: {
-            create: {
+            create: [{
               audioUrl: audioUrl
-            }
+            }]
           }
         })
       },

@@ -1,4 +1,3 @@
-
 import type { Request, Response } from 'express';
 import { PrismaClient } from '../../generated/prisma/index.js';
 import bcrypt from 'bcrypt';
@@ -9,12 +8,12 @@ const SALT_ROUNDS = 12;
 
 export const createUser = async (req: Request, res: Response) => {
   try {
-    const { name, email, password } = req.body;
+    const { empId, username, email, password, location = "all" } = req.body;
     
-    if (!name || !email || !password) {
+    if (!empId || !username || !email || !password) {
       return res.status(400).json({ 
         success: false, 
-        error: "Name, email, and password are required" 
+        error: "Employee ID, username, email, and password are required" 
       });
     }
 
@@ -25,14 +24,21 @@ export const createUser = async (req: Request, res: Response) => {
       });
     }
 
-    const existingUser = await prisma.user.findUnique({
-      where: { email: email.toLowerCase().trim() }
+    // Check for existing user by email, empId, or username
+    const existingUser = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { email: email.toLowerCase().trim() },
+          { empId: empId.trim() },
+          { username: username.trim() }
+        ]
+      }
     });
 
     if (existingUser) {
       return res.status(409).json({ 
         success: false, 
-        error: "User already exists with this email" 
+        error: "User already exists with this email, employee ID, or username" 
       });
     }
 
@@ -40,19 +46,31 @@ export const createUser = async (req: Request, res: Response) => {
 
     const user = await prisma.user.create({
       data: {
-        name: name.trim(),
+        empId: empId.trim(),
+        username: username.trim(),
         email: email.toLowerCase().trim(),
         password: hashedPassword,
+        location: location,
+        userLocation: {
+          create: {
+            username: username.trim(),
+            location: 'ABSOLUTE'
+          }
+        }
+      },
+      include: {
+        userLocation: true
       }
     });
 
-    createUserFolder(user.name);
+    createUserFolder(user.username);
 
     const { password: _, ...userWithoutPassword } = user;
 
-    res.status(201).json({ 
+    res.status(201).json({
       success: true, 
-      username: user.name,
+      username: user.username,
+      empId: user.empId,
       user: userWithoutPassword,
       message: "User created successfully"
     });
@@ -68,17 +86,20 @@ export const createUser = async (req: Request, res: Response) => {
 
 export const loginUser = async (req: Request, res: Response) => {
   try {
-    const { email, password } = req.body;
+    const { username, password } = req.body;
     
-    if (!email || !password) {
+    if (!username || !password) {
       return res.status(400).json({ 
         success: false, 
-        error: "Email and password are required" 
+        error: "Username and password are required" 
       });
     }
 
     const user = await prisma.user.findUnique({
-      where: { email: email.toLowerCase().trim() }
+      where: { username: username },
+      include: {
+        userLocation: true
+      }
     });
 
     if (!user) {
@@ -97,13 +118,15 @@ export const loginUser = async (req: Request, res: Response) => {
       });
     }
 
-    createUserFolder(user.name);
+    createUserFolder(user.username);
 
     const { password: _, ...userWithoutPassword } = user;
 
     res.status(200).json({ 
       success: true, 
       userId: user.id,
+      empId: user.empId,
+      username: user.username,
       user: userWithoutPassword,
       message: "Login successful"
     });
