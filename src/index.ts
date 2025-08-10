@@ -43,7 +43,23 @@ app.use('/api', profileRoutes);
 
 const PORT = parseInt(process.env.PORT || '3000', 10);
 
+import os from 'os';
+
+function getLocalIPv4() {
+  const nets = os.networkInterfaces();
+  for (const name of Object.keys(nets)) {
+    for (const net of nets[name] || []) {
+      if (net.family === 'IPv4' && !net.internal) {
+        return net.address;           // first non-internal IPv4 address
+      }
+    }
+  }
+  return 'localhost';                 // fallback
+}
+
+const localIP = getLocalIPv4();
+
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on http://0.0.0.0:${PORT}`);
-  console.log(`API available at http://10.150.11.131:${PORT}/api`);
+  console.log(`API available at http://${localIP}:${PORT}/api`);
 });
