@@ -1,9 +1,6 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
   output   = "../generated/prisma"
@@ -20,6 +17,21 @@ enum LocationType {
   FIELDTRIP
 }
 
+enum UserRole {
+  USER
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum AdminActionType {
+  CHANGED_LOCATION_TYPE
+  VIEWED_ATTENDANCE
+  VIEWED_ALL_USERS
+  CREATED_USER
+  UPDATED_USER
+  DEACTIVATED_USER
+}
+
 model User {
   id          String            @id @default(cuid())
   empId       String            @unique @db.VarChar(255)
@@ -27,22 +39,38 @@ model User {
   email       String            @unique @db.VarChar(255)
   password    String            @db.VarChar(255)
   location    String            @default("all") @db.VarChar(255)
+  role        UserRole          @default(USER)
+  isActive    Boolean           @default(true)
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
-  userLocation UserLocation?
-  attendances Attendance[]
+
+  // Relationships
+  userLocation         UserLocation?
+  attendances          Attendance[]
+  attendanceDates      AttendanceDate[]
+  attendanceStatistics AttendanceStatistics?
 
   @@map("users")
+  @@index([role])
+  @@index([isActive])
+  @@index([empId])
 }
 
 model UserLocation {
-  id       Int          @id @default(autoincrement())
-  empId    String       @db.VarChar(255) @unique
-  username String       @db.VarChar(255)
-  location LocationType @default(ABSOLUTE)
-  user     User         @relation(fields: [empId], references: [empId], onDelete: Cascade)
+  id           Int          @id @default(autoincrement())
+  empId        String       @unique @db.VarChar(255)
+  username     String       @db.VarChar(255)
+  locationType LocationType @default(ABSOLUTE)
+  updatedBy    String?      @db.VarChar(255) // Admin empId who last updated
+  updatedAt    DateTime     @updatedAt
+  createdAt    DateTime     @default(now())
+  notes        String?      @db.Text // Admin notes for location type change
+  
+  user         User         @relation(fields: [empId], references: [empId], onDelete: Cascade)
 
   @@map("user_locations")
+  @@index([locationType])
+  @@index([updatedBy])
 }
 
 model Attendance {
@@ -50,30 +78,130 @@ model Attendance {
   empId         String            @db.VarChar(255)
   username      String            @db.VarChar(255)
   takenLocation String?           @db.VarChar(255)
+  date          DateTime          @db.Date // Store just the date part
+  checkInTime   DateTime          @default(now()) // Actual timestamp
+  checkOutTime  DateTime?         // For future use if needed
   createdAt     DateTime          @default(now())
-  user          User              @relation(fields: [empId], references: [empId], onDelete: Cascade)
-  photos        AttendancePhoto[]
-  audio         AttendanceAudio[]
+
+  // Relationships
+  user           User              @relation(fields: [empId], references: [empId], onDelete: Cascade)
+  photos         AttendancePhoto[]
+  audio          AttendanceAudio[]
+  attendanceDate AttendanceDate?
 
   @@map("attendance")
+  @@unique([empId, date]) // Ensure one attendance per day per user
+  @@index([date])
+  @@index([empId, date])
+  @@index([empId])
+}
+
+model AttendanceDate {
+  id           Int        @id @default(autoincrement())
+  empId        String     @db.VarChar(255)
+  date         DateTime   @db.Date
+  year         Int
+  month        Int        // 1-12
+  day          Int        // 1-31
+  dayOfWeek    Int        // 0-6 (Sunday-Saturday)
+  weekOfYear   Int        // 1-53
+  isPresent    Boolean    @default(true)
+  attendanceId Int        @unique
+  createdAt    DateTime   @default(now())
+
+  // Relationships
+  user         User       @relation(fields: [empId], references: [empId], onDelete: Cascade)
+  attendance   Attendance @relation(fields: [attendanceId], references: [id], onDelete: Cascade)
+
+  @@map("attendance_dates")
+  @@unique([empId, date])
+  @@index([empId, year, month])
+  @@index([empId, date])
+  @@index([year, month])
+  @@index([empId])
 }
 
 model AttendancePhoto {
   id           Int        @id @default(autoincrement())
   attendanceId Int
   photoUrl     String     @db.VarChar(500)
+  photoType    String?    @db.VarChar(50) // front, left, right
   createdAt    DateTime   @default(now())
+  
   attendance   Attendance @relation(fields: [attendanceId], references: [id], onDelete: Cascade)
 
   @@map("attendance_photos")
+  @@index([attendanceId])
 }
 
 model AttendanceAudio {
   id           Int        @id @default(autoincrement())
   attendanceId Int
   audioUrl     String     @db.VarChar(500)
+  duration     Int?       // Duration in seconds
   createdAt    DateTime   @default(now())
+  
   attendance   Attendance @relation(fields: [attendanceId], references: [id], onDelete: Cascade)
 
   @@map("attendance_audio")
+  @@index([attendanceId])
+}
+
+model AdminActivity {
+  id           Int             @id @default(autoincrement())
+  adminId      String          @db.VarChar(255)
+  adminEmpId   String          @db.VarChar(255)
+  adminEmail   String          @db.VarChar(255)
+  action       AdminActionType
+  targetUserId String?         @db.VarChar(255) // empId of target user
+  details      Json?           // Store additional details as JSON
+  ipAddress    String?         @db.VarChar(45)
+  userAgent    String?         @db.Text
+  createdAt    DateTime        @default(now())
+
+  @@map("admin_activities")
+  @@index([adminId])
+  @@index([adminEmpId])
+  @@index([targetUserId])
+  @@index([createdAt])
+  @@index([action])
+}
+
+model AttendanceStatistics {
+  id              Int      @id @default(autoincrement())
+  empId           String   @unique @db.VarChar(255)
+  totalDays       Int      @default(0)
+  currentStreak   Int      @default(0)
+  longestStreak   Int      @default(0)
+  lastAttendance  DateTime?
+  firstAttendance DateTime?
+  monthlyCount    Json?    // Store monthly attendance counts: {2024: {1: 5, 2: 8}}
+  weeklyAverage   Float?   @default(0)
+  thisMonthCount  Int      @default(0)
+  thisWeekCount   Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relationship
+  user User @relation(fields: [empId], references: [empId], onDelete: Cascade)
+
+  @@map("attendance_statistics")
+  @@index([empId])
+}
+
+// Calendar view for quick date lookups
+model AttendanceCalendar {
+  id        Int      @id @default(autoincrement())
+  empId     String   @db.VarChar(255)
+  year      Int
+  month     Int      // 1-12
+  daysMask  String   @db.VarChar(31) // Binary string representing days: "1010110..." (31 chars max)
+  totalDays Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("attendance_calendar")
+  @@unique([empId, year, month])
+  @@index([empId])
+  @@index([year, month])
 }

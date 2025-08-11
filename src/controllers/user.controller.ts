@@ -44,33 +44,62 @@ export const createUser = async (req: Request, res: Response) => {
 
     const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
 
-    const user = await prisma.user.create({
-      data: {
-        empId: empId.trim(),
-        username: username.trim(),
-        email: email.toLowerCase().trim(),
-        password: hashedPassword,
-        location: location,
-        userLocation: {
-          create: {
-            username: username.trim(),
-            location: 'ABSOLUTE'
-          }
+    // Use transaction to ensure data consistency
+    const user = await prisma.$transaction(async (tx) => {
+      // Create user first
+      const newUser = await tx.user.create({
+        data: {
+          empId: empId.trim(),
+          username: username.trim(),
+          email: email.toLowerCase().trim(),
+          password: hashedPassword,
+          location: location,
+        },
+        include: {
+          userLocation: true
         }
-      },
-      include: {
-        userLocation: true
-      }
+      });
+
+      // Create userLocation record
+      await tx.userLocation.create({
+        data: {
+          empId: empId.trim(),           // Add required empId field
+          username: username.trim(),
+          locationType: 'ABSOLUTE'       // Use locationType instead of location
+        }
+      });
+
+      // Initialize attendance statistics for the new user
+      await tx.attendanceStatistics.create({
+        data: {
+          empId: empId.trim(),
+          totalDays: 0,
+          currentStreak: 0,
+          longestStreak: 0,
+          thisMonthCount: 0,
+          thisWeekCount: 0,
+          weeklyAverage: 0
+        }
+      });
+
+      // Return user with userLocation included
+      return await tx.user.findUnique({
+        where: { empId: empId.trim() },
+        include: {
+          userLocation: true,
+          attendanceStatistics: true
+        }
+      });
     });
 
-    createUserFolder(user.username);
+    createUserFolder(user!.username);
 
-    const { password: _, ...userWithoutPassword } = user;
+    const { password: _, ...userWithoutPassword } = user!;
 
     res.status(201).json({
       success: true, 
-      username: user.username,
-      empId: user.empId,
+      username: user!.username,
+      empId: user!.empId,
       user: userWithoutPassword,
       message: "User created successfully"
     });
@@ -98,14 +127,23 @@ export const loginUser = async (req: Request, res: Response) => {
     const user = await prisma.user.findUnique({
       where: { username: username },
       include: {
-        userLocation: true
+        userLocation: true,
+        attendanceStatistics: true
       }
     });
 
     if (!user) {
       return res.status(401).json({ 
         success: false, 
-        error: "Invalid email or password" 
+        error: "Invalid username or password" 
+      });
+    }
+
+    // Check if user is active
+    if (!user.isActive) {
+      return res.status(401).json({ 
+        success: false, 
+        error: "Account is deactivated. Please contact administrator." 
       });
     }
 
@@ -114,7 +152,7 @@ export const loginUser = async (req: Request, res: Response) => {
     if (!passwordMatch) {
       return res.status(401).json({ 
         success: false, 
-        error: "Invalid email or password" 
+        error: "Invalid username or password" 
       });
     }
 
@@ -136,6 +174,160 @@ export const loginUser = async (req: Request, res: Response) => {
     res.status(500).json({ 
       success: false, 
       error: error.message 
+    });
+  }
+};
+
+// Additional utility functions you might need
+
+export const getUserById = async (req: Request, res: Response) => {
+  try {
+    const { empId } = req.params;
+
+    if (!empId) {
+      return res.status(400).json({
+        success: false,
+        error: "Employee ID is required"
+      });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { empId },
+      select: {
+        id: true,
+        empId: true,
+        username: true,
+        email: true,
+        location: true,
+        role: true,
+        isActive: true,
+        createdAt: true,
+        userLocation: {
+          select: {
+            locationType: true,
+            updatedAt: true,
+            notes: true
+          }
+        },
+        attendanceStatistics: {
+          select: {
+            totalDays: true,
+            currentStreak: true,
+            longestStreak: true,
+            lastAttendance: true,
+            thisMonthCount: true,
+            thisWeekCount: true,
+            weeklyAverage: true
+          }
+        }
+      }
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: "User not found"
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: user
+    });
+
+  } catch (error: any) {
+    console.error("Get user error:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+};
+
+export const updateUser = async (req: Request, res: Response) => {
+  try {
+    const { empId } = req.params;
+    const { username, email, location, isActive } = req.body;
+
+    if (!empId) {
+      return res.status(400).json({
+        success: false,
+        error: "Employee ID is required"
+      });
+    }
+
+    // Check if username or email already exists (excluding current user)
+    if (username || email) {
+      const existingUser = await prisma.user.findFirst({
+        where: {
+          AND: [
+            { empId: { not: empId } },
+            {
+              OR: [
+                ...(username ? [{ username: username.trim() }] : []),
+                ...(email ? [{ email: email.toLowerCase().trim() }] : [])
+              ]
+            }
+          ]
+        }
+      });
+
+      if (existingUser) {
+        return res.status(409).json({
+          success: false,
+          error: "Username or email already exists"
+        });
+      }
+    }
+
+    const updatedUser = await prisma.$transaction(async (tx) => {
+      // Update user
+      const user = await tx.user.update({
+        where: { empId },
+        data: {
+          ...(username && { username: username.trim() }),
+          ...(email && { email: email.toLowerCase().trim() }),
+          ...(location && { location }),
+          ...(typeof isActive === 'boolean' && { isActive })
+        },
+        include: {
+          userLocation: true,
+          attendanceStatistics: true
+        }
+      });
+
+      // Update userLocation username if username changed
+      if (username) {
+        await tx.userLocation.update({
+          where: { empId },
+          data: { username: username.trim() }
+        });
+      }
+
+      return user;
+    });
+
+    const { password: _, ...userWithoutPassword } = updatedUser;
+
+    res.status(200).json({
+      success: true,
+      message: "User updated successfully",
+      data: userWithoutPassword
+    });
+
+  } catch (error: any) {
+    console.error("Update user error:", error);
+    
+    if (error.code === 'P2025') {
+      return res.status(404).json({
+        success: false,
+        error: "User not found"
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      error: error.message
     });
   }
 };
