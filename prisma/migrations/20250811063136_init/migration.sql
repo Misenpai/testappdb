@@ -16,6 +16,7 @@ CREATE TABLE `users` (
     UNIQUE INDEX `users_email_key`(`email`),
     INDEX `users_role_idx`(`role`),
     INDEX `users_isActive_idx`(`isActive`),
+    INDEX `users_empId_idx`(`empId`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -25,8 +26,8 @@ CREATE TABLE `user_locations` (
     `empId` VARCHAR(255) NOT NULL,
     `username` VARCHAR(255) NOT NULL,
     `locationType` ENUM('ABSOLUTE', 'APPROX', 'FIELDTRIP') NOT NULL DEFAULT 'ABSOLUTE',
-    `updatedBy` VARCHAR(255) NULL,
     `updatedAt` DATETIME(3) NOT NULL,
+    `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `notes` TEXT NULL,
 
     UNIQUE INDEX `user_locations_empId_key`(`empId`),
@@ -47,6 +48,7 @@ CREATE TABLE `attendance` (
 
     INDEX `attendance_date_idx`(`date`),
     INDEX `attendance_empId_date_idx`(`empId`, `date`),
+    INDEX `attendance_empId_idx`(`empId`),
     UNIQUE INDEX `attendance_empId_date_key`(`empId`, `date`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -63,11 +65,13 @@ CREATE TABLE `attendance_dates` (
     `weekOfYear` INTEGER NOT NULL,
     `isPresent` BOOLEAN NOT NULL DEFAULT true,
     `attendanceId` INTEGER NOT NULL,
+    `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
 
     UNIQUE INDEX `attendance_dates_attendanceId_key`(`attendanceId`),
     INDEX `attendance_dates_empId_year_month_idx`(`empId`, `year`, `month`),
     INDEX `attendance_dates_empId_date_idx`(`empId`, `date`),
     INDEX `attendance_dates_year_month_idx`(`year`, `month`),
+    INDEX `attendance_dates_empId_idx`(`empId`),
     UNIQUE INDEX `attendance_dates_empId_date_key`(`empId`, `date`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -97,37 +101,19 @@ CREATE TABLE `attendance_audio` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
-CREATE TABLE `admin_activities` (
-    `id` INTEGER NOT NULL AUTO_INCREMENT,
-    `adminId` VARCHAR(255) NOT NULL,
-    `adminEmail` VARCHAR(255) NOT NULL,
-    `action` VARCHAR(255) NOT NULL,
-    `targetUserId` VARCHAR(255) NULL,
-    `details` JSON NULL,
-    `ipAddress` VARCHAR(45) NULL,
-    `userAgent` TEXT NULL,
-    `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-
-    INDEX `admin_activities_adminId_idx`(`adminId`),
-    INDEX `admin_activities_targetUserId_idx`(`targetUserId`),
-    INDEX `admin_activities_createdAt_idx`(`createdAt`),
-    PRIMARY KEY (`id`)
-) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-
--- CreateTable
-CREATE TABLE `attendance_statistics` (
+CREATE TABLE `attendance_calendar` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
     `empId` VARCHAR(255) NOT NULL,
+    `year` INTEGER NOT NULL,
+    `month` INTEGER NOT NULL,
+    `daysMask` VARCHAR(31) NOT NULL,
     `totalDays` INTEGER NOT NULL DEFAULT 0,
-    `currentStreak` INTEGER NOT NULL DEFAULT 0,
-    `longestStreak` INTEGER NOT NULL DEFAULT 0,
-    `lastAttendance` DATETIME(3) NULL,
-    `monthlyCount` JSON NULL,
-    `weeklyAverage` DOUBLE NULL DEFAULT 0,
+    `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `updatedAt` DATETIME(3) NOT NULL,
 
-    UNIQUE INDEX `attendance_statistics_empId_key`(`empId`),
-    INDEX `attendance_statistics_empId_idx`(`empId`),
+    INDEX `attendance_calendar_empId_idx`(`empId`),
+    INDEX `attendance_calendar_year_month_idx`(`year`, `month`),
+    UNIQUE INDEX `attendance_calendar_empId_year_month_key`(`empId`, `year`, `month`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 

@@ -63,22 +63,9 @@ export const createUser = async (req: Request, res: Response) => {
       // Create userLocation record
       await tx.userLocation.create({
         data: {
-          empId: empId.trim(),           // Add required empId field
-          username: username.trim(),
-          locationType: 'ABSOLUTE'       // Use locationType instead of location
-        }
-      });
-
-      // Initialize attendance statistics for the new user
-      await tx.attendanceStatistics.create({
-        data: {
           empId: empId.trim(),
-          totalDays: 0,
-          currentStreak: 0,
-          longestStreak: 0,
-          thisMonthCount: 0,
-          thisWeekCount: 0,
-          weeklyAverage: 0
+          username: username.trim(),
+          locationType: 'ABSOLUTE'
         }
       });
 
@@ -86,8 +73,7 @@ export const createUser = async (req: Request, res: Response) => {
       return await tx.user.findUnique({
         where: { empId: empId.trim() },
         include: {
-          userLocation: true,
-          attendanceStatistics: true
+          userLocation: true
         }
       });
     });
@@ -127,8 +113,7 @@ export const loginUser = async (req: Request, res: Response) => {
     const user = await prisma.user.findUnique({
       where: { username: username },
       include: {
-        userLocation: true,
-        attendanceStatistics: true
+        userLocation: true
       }
     });
 
@@ -178,8 +163,6 @@ export const loginUser = async (req: Request, res: Response) => {
   }
 };
 
-// Additional utility functions you might need
-
 export const getUserById = async (req: Request, res: Response) => {
   try {
     const { empId } = req.params;
@@ -207,17 +190,6 @@ export const getUserById = async (req: Request, res: Response) => {
             locationType: true,
             updatedAt: true,
             notes: true
-          }
-        },
-        attendanceStatistics: {
-          select: {
-            totalDays: true,
-            currentStreak: true,
-            longestStreak: true,
-            lastAttendance: true,
-            thisMonthCount: true,
-            thisWeekCount: true,
-            weeklyAverage: true
           }
         }
       }
@@ -291,8 +263,7 @@ export const updateUser = async (req: Request, res: Response) => {
           ...(typeof isActive === 'boolean' && { isActive })
         },
         include: {
-          userLocation: true,
-          attendanceStatistics: true
+          userLocation: true
         }
       });
 

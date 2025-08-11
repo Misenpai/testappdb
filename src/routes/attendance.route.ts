@@ -1,11 +1,11 @@
+// src/routes/attendance.route.ts
 import { Router } from 'express';
 import { 
   createAttendance, 
   getAttendanceCalendar,
-  getUserAttendanceSummary,  // New function for profile summary
-  updateUserLocationType,
-  getAllUsersWithLocations,
-  getUserAttendanceForAdmin  // New function for admin to view user attendance
+  getUserAttendanceSummary,
+  getAllUsersWithAttendance,
+  getUserAttendanceDetails
 } from '../controllers/attendance.controller.js';
 import { upload } from '../utils/fileUpload.js';
 
@@ -24,9 +24,8 @@ router.get('/attendance/calendar/:empId', getAttendanceCalendar);
 // Get user attendance summary for profile
 router.get('/attendance/summary/:empId', getUserAttendanceSummary);
 
-// Admin routes
-router.put('/admin/user-location-type/:empId', updateUserLocationType);
-router.get('/admin/users-locations', getAllUsersWithLocations);
-router.get('/admin/users/:empId/attendance', getUserAttendanceForAdmin);
+// Admin routes (No authentication required - for admin dashboard)
+router.get('/admin/users-attendance', getAllUsersWithAttendance);
+router.get('/admin/users/:empId/attendance', getUserAttendanceDetails);
 
 export default router;
