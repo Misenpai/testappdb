@@ -52,8 +52,16 @@ export const getUserLocation = async (req: Request, res: Response) => {
   try {
     const { empId } = req.params;
 
+    // Add validation for empId
+    if (!empId) {
+      return res.status(400).json({
+        success: false,
+        error: "Employee ID is required",
+      });
+    }
+
     const userLocation = await prisma.userLocation.findUnique({
-      where: { empId },
+      where: { empId: empId }, // Explicitly type as string
       include: {
         user: {
           select: {

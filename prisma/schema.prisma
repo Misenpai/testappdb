@@ -23,6 +23,16 @@ enum UserRole {
   SUPER_ADMIN
 }
 
+enum SessionType {
+  FORENOON   // 9:30 AM - 1:00 PM
+  AFTERNOON  // 1:00 PM - 5:30 PM
+}
+
+enum AttendanceType {
+  FULL_DAY
+  HALF_DAY
+}
+
 model User {
   id          String            @id @default(cuid())
   empId       String            @unique @db.VarChar(255)
@@ -69,6 +79,9 @@ model Attendance {
   date          DateTime          @db.Date
   checkInTime   DateTime          @default(now())
   checkOutTime  DateTime?
+  sessionType   SessionType       // FORENOON or AFTERNOON
+  attendanceType AttendanceType?  // FULL_DAY or HALF_DAY (set after checkout)
+  isCheckedOut  Boolean          @default(false)
   createdAt     DateTime          @default(now())
 
   // Relationships
@@ -82,20 +95,23 @@ model Attendance {
   @@index([date])
   @@index([empId, date])
   @@index([empId])
+  @@index([sessionType])
+  @@index([attendanceType])
 }
 
 model AttendanceDate {
-  id           Int        @id @default(autoincrement())
-  empId        String     @db.VarChar(255)
-  date         DateTime   @db.Date
+  id           Int            @id @default(autoincrement())
+  empId        String         @db.VarChar(255)
+  date         DateTime       @db.Date
   year         Int
-  month        Int        // 1-12
-  day          Int        // 1-31
-  dayOfWeek    Int        // 0-6 (Sunday-Saturday)
-  weekOfYear   Int        // 1-53
-  isPresent    Boolean    @default(true)
-  attendanceId Int        @unique
-  createdAt    DateTime   @default(now())
+  month        Int            // 1-12
+  day          Int            // 1-31
+  dayOfWeek    Int            // 0-6 (Sunday-Saturday)
+  weekOfYear   Int            // 1-53
+  isPresent    Boolean        @default(true)
+  attendanceType AttendanceType? // FULL_DAY or HALF_DAY
+  attendanceId Int            @unique
+  createdAt    DateTime       @default(now())
 
   // Relationships
   user         User       @relation(fields: [empId], references: [empId], onDelete: Cascade)
@@ -141,8 +157,9 @@ model AttendanceCalendar {
   empId     String   @db.VarChar(255)
   year      Int
   month     Int      // 1-12
-  daysMask  String   @db.VarChar(31) // Binary string representing days
-  totalDays Int      @default(0)
+  daysMask  String   @db.VarChar(31) // Binary string representing days (0=absent, 1=half, 2=full)
+  totalFullDays Int   @default(0)
+  totalHalfDays Int   @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

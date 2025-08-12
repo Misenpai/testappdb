@@ -44,11 +44,16 @@ CREATE TABLE `attendance` (
     `date` DATE NOT NULL,
     `checkInTime` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `checkOutTime` DATETIME(3) NULL,
+    `sessionType` ENUM('FORENOON', 'AFTERNOON') NOT NULL,
+    `attendanceType` ENUM('FULL_DAY', 'HALF_DAY') NULL,
+    `isCheckedOut` BOOLEAN NOT NULL DEFAULT false,
     `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
 
     INDEX `attendance_date_idx`(`date`),
     INDEX `attendance_empId_date_idx`(`empId`, `date`),
     INDEX `attendance_empId_idx`(`empId`),
+    INDEX `attendance_sessionType_idx`(`sessionType`),
+    INDEX `attendance_attendanceType_idx`(`attendanceType`),
     UNIQUE INDEX `attendance_empId_date_key`(`empId`, `date`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -64,6 +69,7 @@ CREATE TABLE `attendance_dates` (
     `dayOfWeek` INTEGER NOT NULL,
     `weekOfYear` INTEGER NOT NULL,
     `isPresent` BOOLEAN NOT NULL DEFAULT true,
+    `attendanceType` ENUM('FULL_DAY', 'HALF_DAY') NULL,
     `attendanceId` INTEGER NOT NULL,
     `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
 
@@ -107,7 +113,8 @@ CREATE TABLE `attendance_calendar` (
     `year` INTEGER NOT NULL,
     `month` INTEGER NOT NULL,
     `daysMask` VARCHAR(31) NOT NULL,
-    `totalDays` INTEGER NOT NULL DEFAULT 0,
+    `totalFullDays` INTEGER NOT NULL DEFAULT 0,
+    `totalHalfDays` INTEGER NOT NULL DEFAULT 0,
     `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `updatedAt` DATETIME(3) NOT NULL,
 

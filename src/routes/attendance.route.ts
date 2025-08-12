@@ -1,11 +1,13 @@
 // src/routes/attendance.route.ts
 import { Router } from 'express';
 import { 
-  createAttendance, 
+  createAttendance,
+  checkoutAttendance,
   getAttendanceCalendar,
   getUserAttendanceSummary,
   getAllUsersWithAttendance,
-  getUserAttendanceDetails
+  getUserAttendanceDetails,
+  getTodayAttendance
 } from '../controllers/attendance.controller.js';
 import { upload } from '../utils/fileUpload.js';
 
@@ -17,6 +19,12 @@ router.post(
   upload.any(),
   createAttendance
 );
+
+// Checkout endpoint
+router.post('/attendance/checkout', checkoutAttendance);
+
+// Get today's attendance for a user
+router.get('/attendance/today/:username', getTodayAttendance);
 
 // Get attendance calendar data for a user (for mobile app profile)
 router.get('/attendance/calendar/:empId', getAttendanceCalendar);
