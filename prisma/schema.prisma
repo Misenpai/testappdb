@@ -24,8 +24,8 @@ enum UserRole {
 }
 
 enum SessionType {
-  FORENOON   // 9:30 AM - 1:00 PM
-  AFTERNOON  // 1:00 PM - 5:30 PM
+  FORENOON  
+  AFTERNOON 
 }
 
 enum AttendanceType {
@@ -45,7 +45,7 @@ model User {
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
 
-  // Relationships
+
   userLocation         UserLocation?
   attendances          Attendance[]
   attendanceDates      AttendanceDate[]
@@ -79,12 +79,12 @@ model Attendance {
   date          DateTime          @db.Date
   checkInTime   DateTime          @default(now())
   checkOutTime  DateTime?
-  sessionType   SessionType       // FORENOON or AFTERNOON
-  attendanceType AttendanceType?  // FULL_DAY or HALF_DAY (set after checkout)
+  sessionType   SessionType       
+  attendanceType AttendanceType?  
   isCheckedOut  Boolean          @default(false)
   createdAt     DateTime          @default(now())
 
-  // Relationships
+
   user           User              @relation(fields: [empId], references: [empId], onDelete: Cascade)
   photos         AttendancePhoto[]
   audio          AttendanceAudio[]
@@ -104,16 +104,16 @@ model AttendanceDate {
   empId        String         @db.VarChar(255)
   date         DateTime       @db.Date
   year         Int
-  month        Int            // 1-12
-  day          Int            // 1-31
-  dayOfWeek    Int            // 0-6 (Sunday-Saturday)
-  weekOfYear   Int            // 1-53
+  month        Int            
+  day          Int            
+  dayOfWeek    Int            
+  weekOfYear   Int            
   isPresent    Boolean        @default(true)
-  attendanceType AttendanceType? // FULL_DAY or HALF_DAY
+  attendanceType AttendanceType? 
   attendanceId Int            @unique
   createdAt    DateTime       @default(now())
 
-  // Relationships
+
   user         User       @relation(fields: [empId], references: [empId], onDelete: Cascade)
   attendance   Attendance @relation(fields: [attendanceId], references: [id], onDelete: Cascade)
 
@@ -129,7 +129,7 @@ model AttendancePhoto {
   id           Int        @id @default(autoincrement())
   attendanceId Int
   photoUrl     String     @db.VarChar(500)
-  photoType    String?    @db.VarChar(50) // front, left, right
+  photoType    String?    @db.VarChar(50)
   createdAt    DateTime   @default(now())
   
   attendance   Attendance @relation(fields: [attendanceId], references: [id], onDelete: Cascade)
@@ -142,7 +142,7 @@ model AttendanceAudio {
   id           Int        @id @default(autoincrement())
   attendanceId Int
   audioUrl     String     @db.VarChar(500)
-  duration     Int?       // Duration in seconds
+  duration     Int?      
   createdAt    DateTime   @default(now())
   
   attendance   Attendance @relation(fields: [attendanceId], references: [id], onDelete: Cascade)
@@ -151,13 +151,13 @@ model AttendanceAudio {
   @@index([attendanceId])
 }
 
-// Calendar view for quick date lookups
+
 model AttendanceCalendar {
   id        Int      @id @default(autoincrement())
   empId     String   @db.VarChar(255)
   year      Int
-  month     Int      // 1-12
-  daysMask  String   @db.VarChar(31) // Binary string representing days (0=absent, 1=half, 2=full)
+  month     Int      
+  daysMask  String   @db.VarChar(31) 
   totalFullDays Int   @default(0)
   totalHalfDays Int   @default(0)
   createdAt DateTime @default(now())
