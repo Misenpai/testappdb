@@ -65,7 +65,11 @@ model UserLocation {
   createdAt    DateTime     @default(now())
   notes        String?      @db.Text
   
+  approxLat    Float?       @db.Float
+  approxLng    Float?       @db.Float
+  approxRadius Int?         @default(100)
   user         User         @relation(fields: [empId], references: [empId], onDelete: Cascade)
+  fieldTrips   FieldTrip[]
 
   @@map("user_locations")
   @@index([locationType])
@@ -167,4 +171,22 @@ model AttendanceCalendar {
   @@unique([empId, year, month])
   @@index([empId])
   @@index([year, month])
+}
+
+model FieldTrip {
+  id            Int          @id @default(autoincrement())
+  empId         String       @db.VarChar(255)
+  startDate     DateTime     @db.Date
+  endDate       DateTime     @db.Date
+  description   String?      @db.Text
+  createdBy     String       @db.VarChar(255) // Admin who created
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  isActive      Boolean      @default(true)
+  userLocation  UserLocation @relation(fields: [empId], references: [empId], onDelete: Cascade)
+
+  @@map("field_trips")
+  @@index([empId])
+  @@index([startDate, endDate])
+  @@index([isActive])
 }
